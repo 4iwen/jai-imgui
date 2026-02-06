@@ -19,6 +19,7 @@ The Dear ImGui bindings are available for Windows x64, MacOS x64/ARM64, and Linu
 Backend support:
 
 - `sdl3_gpu3`: Windows x64, MacOS x64/ARM64, and Linux x64
+- `glfw_opengl3`: Windows x64, MacOS x64 (untested)/ARM64, and Linux x64 (untested)
 
 PRs welcome to add support for more platforms and backends!
 
@@ -50,13 +51,14 @@ We support using `generate.jai` to generate static libraries of ImGui backends. 
 
 Since backend libraries do *not* include the main ImGui library, to use them your program must link to both the main Dear ImGui library and then, if you want to use a backend, to also link to the backend(s) of choice. Each backend has its own bindings file.
 
-Currently the only supported backend is SDL3+SDL_GPU3, but it should be relatively easy to add more (check the `compile_and_generate_bindings_backend_sdl3_gpu3` procedure in `generate.jai` to see how its done and how you might do more).
+Currently the only supported backends are SDL3+SDL_GPU3, GLFW+OPENGL3, but it should be relatively easy to add more (check the `compile_and_generate_bindings_backend_sdl3_gpu3` procedure in `generate.jai` to see how its done and how you might do more).
 
 To compile a backend and then generate ImGui bindings and backend bindings: `jai generate.jai - -backend_sdl3_gpu3`.
 
 Supported backends:
 
 - `sdl3_gpu3`
+- `glfw_opengl3`
 
 ## Credits
 

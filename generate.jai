@@ -4,6 +4,7 @@
 // We don’t ship the Dear ImGui source with the compiler. Download a Dear ImGui release and update this path if you want to re-generate the bindings.
 IMGUI_PATH :: "src/imgui"; // Docking e11ad6b77e5c7f7ed28467fec42fe2c72068b68e (a bit after v1.91.9b)
 SDL3_INCLUDE_PATH :: "src/include"; // Used for SDL v3.2.14
+GLFW_INCLUDE_PATH :: "src/include"; // Used for GLFW v3.4
 
 DECLARATIONS_TO_OMIT :: string.[
     // We have custom declarations for these in module.jai:
@@ -38,6 +39,7 @@ generate_imgui_bindings :: (args: [] string) -> bool {
     compile := array_find(args, "-compile");
     compile_debug := array_find(args, "-debug");
     backend_sdl3_gpu3 := array_find(args, "-backend_sdl3_gpu3");
+	backend_glfw_opengl3 := array_find(args, "-backend_glfw_opengl3");
 
     if compile {
 
@@ -105,6 +107,11 @@ generate_imgui_bindings :: (args: [] string) -> bool {
     // We return if we generate a backend because bindings generator crashes if we do more than one generation per run
     if backend_sdl3_gpu3 {
         success := compile_and_generate_bindings_backend_sdl3_gpu3(compile_debug);
+        return success;
+    }
+
+	if backend_glfw_opengl3 {
+        success := compile_and_generate_bindings_backend_glfw_opengl3(compile_debug);
         return success;
     }
 
@@ -311,6 +318,153 @@ END
     return success;
 }
 
+compile_and_generate_bindings_backend_glfw_opengl3 :: (compile_debug: bool) -> bool {
+
+    success := false;
+    array_add(*prefixes_to_keep, "ImGui_ImplGlfw_", "ImGui_ImplOpenGL3_");
+
+    src_files := string.[
+        sprint("%/backends/imgui_impl_glfw.cpp", IMGUI_PATH),
+        sprint("%/backends/imgui_impl_opengl3.cpp", IMGUI_PATH),
+    ];
+
+    // Generate binaries
+    #if OS == .WINDOWS {
+
+        make_directory_if_it_does_not_exist("backends/windows");
+
+        // We set IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS. Otherwise all users of the ImGui module have to link against "imm32".
+        success = build_cpp_static_lib("backends/windows/ImGui_glfw_opengl3.static", ..src_files, extra = .["/DIMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS", tprint("/I%", IMGUI_PATH), tprint("/I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
+
+        if !success return false;
+
+    } else #if OS == .MACOS {
+
+        #import "Process";
+
+        make_directory_if_it_does_not_exist("backends/macos");
+
+        macos_x64_version_arg   := "-mmacos-version-min=10.13"; // Our current x64 min version
+        macos_arm64_version_arg := "-mmacos-version-min=11.0";  // Earliest version that supports arm64
+
+        // x64 variant
+        // @Hack: Is -fno-threadsafe-statics really the way to go? Without it, we get linker errors when using the static library
+        // due to "__cxa_guard_acquire" et al not being defined. The library users probably need to link agains libc++ or something. But do we really want to enforce that?
+        success = build_cpp_static_lib("backends/macos/ImGui_x64_glfw_opengl3", ..src_files, extra = .["-arch", "x86_64", "-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", macos_x64_version_arg, tprint("-I%", IMGUI_PATH), tprint("/I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
+        assert(success, "build_cpp_static_lib('backends/macos/ImGui_x64_glfw_opengl3'");
+
+        // arm64 variant
+        success = build_cpp_static_lib("backends/macos/ImGui_arm64_glfw_opengl3", ..src_files, extra = .["-arch", "arm64",  "-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", macos_arm64_version_arg, tprint("-I%", IMGUI_PATH), tprint("/I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
+        assert(success, "build_cpp_static_lib('backends/macos/ImGui_arm64_glfw_opengl3'");
+
+        // create universal binaries
+        run_result :=  run_command("lipo", "-create", "backends/macos/ImGui_x64_glfw_opengl3.a", "backends/macos/ImGui_arm64_glfw_opengl3.a", "-output", "backends/macos/ImGui_glfw_opengl3.a");
+        success = (run_result.exit_code == 0);
+
+    } else #if OS == .LINUX {
+
+        #import "Process";
+
+        make_directory_if_it_does_not_exist("backends/linux");
+
+        // @Hack: Is -fno-threadsafe-statics really the way to go? Without it, we get linker errors when using the static library
+        // due to "__cxa_guard_acquire" et al not being defined. The library users probably need to link agains libc++ or something. But do we really want to enforce that?
+        success = build_cpp_static_lib("backends/linux/ImGui_glfw_opengl3", ..src_files, extra = .["-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", tprint("-I%", IMGUI_PATH), tprint("/I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
+        assert(success, "build_cpp_static_lib('backends/linux/ImGui_glfw_opengl3'");
+    }
+
+    // Generate bindings
+    output_filename: string;
+    opts: Generate_Bindings_Options;
+    {
+        using opts;
+
+        #if OS == .WINDOWS {
+
+            array_add(*library_search_paths, "backends/windows");
+            array_add(*libraries, .{filename="ImGui_glfw_opengl3.static"});
+            output_filename = "backends/windows/windows_glfw_opengl3.jai";
+            generate_library_declarations = false;
+
+            footer = #string EOF
+imgui_glfw_opengl3 :: #library,no_dll "ImGui_glfw_opengl3.static";
+EOF
+
+        } else {
+
+            // "inline" functions are not present in the static library.
+            strip_flags |= .INLINED_FUNCTIONS;
+
+            #if OS == .LINUX {
+                array_add(*library_search_paths, "backends/linux");
+            } else #if OS == .MACOS {
+
+                array_add(*library_search_paths, "backends/macos");
+
+                // For some reason generation on macos doesn't find
+                // the library and so strips the functions we want them.
+                //
+                // So for now we avoid stripping them and then do the horrible hack
+                // below to replace '#foreign __UnknownLib' and '#elsewhere __UnknownLib'
+                // with '#foreign imgui_glfw_opengl3'
+                strip_flags &= ~.SYMBOLS_WITH_UNKNOWN_FOREIGN_LIBS;
+
+            } else {
+                assert(false);
+            }
+
+            array_add(*libraries, .{filename="ImGui_glfw_opengl3"});
+            output_filename = "backends/unix_glfw_opengl3.jai";
+            generate_library_declarations = false;
+            footer = #string END
+#if OS == .MACOS imgui_glfw_opengl3 :: #library,no_dll "macos/ImGui_glfw_opengl3";
+#if OS == .LINUX imgui_glfw_opengl3 :: #library,no_dll "linux/ImGui_glfw_opengl3";
+END
+        }
+
+        array_add(*include_paths, IMGUI_PATH, GLFW_INCLUDE_PATH);
+        array_add(*source_files, tprint("%/backends/imgui_impl_glfw.h", IMGUI_PATH), tprint("%/backends/imgui_impl_opengl3.h", IMGUI_PATH));
+        array_add(*extra_clang_arguments, "-x", "c++", "-DWIN32_LEAN_AND_MEAN");
+        array_add(*flatten_namespaces, "ImGui");
+        array_add(*strip_prefixes, "ImGui", "Imgui");
+
+        auto_detect_enum_prefixes = false;
+        log_stripped_declarations = false;
+        generate_compile_time_struct_checks = false;
+
+        visitor = imgui_visitor;
+        get_func_args_for_printing = imgui_get_function_arg_for_printing;
+    }
+
+    success = generate_bindings(opts, output_filename);
+
+    // Horrible hack but...
+    #if OS == .MACOS {
+
+        file_path := "backends/unix_glfw_opengl3.jai";
+        defer {
+            if !success {
+                log("failed to replace invalid library name from generated MacOS bindings at '%'. You will have to manually replace '#foreign __UnknownLib' and '#elsewhere __UnknownLib' with '#foreign imgui_glfw_opengl3' and '#elsewhere imgui_glfw_opengl3'", file_path, flags=.ERROR);
+            }
+        }
+
+        contents, success= := read_entire_file(file_path);
+        if success {
+            defer free(contents);
+
+            replace1 := replace(contents, "#foreign __UnknownLib", "#foreign imgui_glfw_opengl3");
+            defer free(replace1);
+
+            replace2 := replace(replace1, "#elsewhere __UnknownLib", "#elsewhere imgui_glfw_opengl3");
+            defer free(replace2);
+
+            success = write_entire_file(file_path, replace2);
+        }
+    }
+
+    return success;
+}
+
 begin_end_string_args: [..]*Declaration;
 enums_for_typedefs: Table(string, *Enum);
 prefixes_to_keep: [..]string;
@@ -393,7 +547,7 @@ imgui_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration_
     {
         old_name := decl.type.type_of_typedef.name;
         if old_name {
-            found, en := table_find_new(*enums_for_typedefs, old_name);
+            found, en := table_find(*enums_for_typedefs, old_name);
             if found {
                 change_type_to_enum(decl, en);
             }
