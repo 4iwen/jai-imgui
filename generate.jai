@@ -442,20 +442,20 @@ imgui_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration_
 // Modify function with _begin and _end string arguments as they get printed.
 // See the note above about "text_begin".
 imgui_get_function_arg_for_printing :: (func: *Function, type: *Function_Type, mode: Arg_Print_Mode) -> []*Declaration {
-    args: [..]*Declaration;
-    for type.arguments {
-        if array_find(begin_end_string_args, it) {
-            if mode == {
-                case .OUTER_WRAPPER;
-                    // For the outer wrapper, remove any "_begin" part of the argument, and
-                    // change its type to a jai string
-                    arg_copy := New(Declaration);
-                    (<<arg_copy) = <<it;
-                    arg_copy.type = context.generator.type_def_jai_string;
-                    if ends_with(it.name, "_begin") {
-                        arg_copy.output_name = slice(it.name, 0, it.name.count - "_begin".count);
-                    }
-                    array_add(*args, arg_copy);
+	args: [..]*Declaration;
+	for type.arguments {
+		if array_find(begin_end_string_args, it) {
+			if mode == {
+				case .OUTER_WRAPPER;
+					// For the outer wrapper, remove any "_begin" part of the argument, and
+					// change its type to a jai string
+					arg_copy := New(Declaration);
+					arg_copy.* = it.*;
+					arg_copy.type = context.generator.type_def_jai_string;
+					if ends_with(it.name, "_begin") {
+						arg_copy.output_name = slice(it.name, 0, it.name.count - "_begin".count);
+					}
+					array_add(*args, arg_copy);
 
                     it_index += 1; // skip the next argument-we collpase the _begin and _end args into one string arg
 
@@ -469,15 +469,15 @@ imgui_get_function_arg_for_printing :: (func: *Function, type: *Function_Type, m
                         base_arg_name = slice(it.name, 0, it.name.count - "_begin".count);
                     }
 
-                    arg_copy := New(Declaration);
-                    (<<arg_copy) = <<it;
-                    arg_copy.output_name = tprint("%.data", base_arg_name);
-                    array_add(*args, arg_copy);
+					arg_copy := New(Declaration);
+					arg_copy.* = it.*;
+					arg_copy.output_name = tprint("%.data", base_arg_name);
+					array_add(*args, arg_copy);
 
-                    arg_copy_2 := New(Declaration);
-                    (<<arg_copy_2) = <<it;
-                    arg_copy_2.output_name = tprint("%.data + %.count", base_arg_name, base_arg_name);
-                    array_add(*args, arg_copy_2);
+					arg_copy_2 := New(Declaration);
+					arg_copy_2.* = it.*;
+					arg_copy_2.output_name = tprint("%.data + %.count", base_arg_name, base_arg_name);
+					array_add(*args, arg_copy_2);
 
                     it_index += 1; // skip the next arg, since we already added a second one above
                     continue;
