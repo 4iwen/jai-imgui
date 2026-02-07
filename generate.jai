@@ -350,11 +350,11 @@ compile_and_generate_bindings_backend_glfw_opengl3 :: (compile_debug: bool) -> b
         // x64 variant
         // @Hack: Is -fno-threadsafe-statics really the way to go? Without it, we get linker errors when using the static library
         // due to "__cxa_guard_acquire" et al not being defined. The library users probably need to link agains libc++ or something. But do we really want to enforce that?
-        success = build_cpp_static_lib("backends/macos/ImGui_x64_glfw_opengl3", ..src_files, extra = .["-arch", "x86_64", "-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", macos_x64_version_arg, tprint("-I%", IMGUI_PATH), tprint("/I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
+        success = build_cpp_static_lib("backends/macos/ImGui_x64_glfw_opengl3", ..src_files, extra = .["-arch", "x86_64", "-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", macos_x64_version_arg, tprint("-I%", IMGUI_PATH), tprint("-I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
         assert(success, "build_cpp_static_lib('backends/macos/ImGui_x64_glfw_opengl3'");
 
         // arm64 variant
-        success = build_cpp_static_lib("backends/macos/ImGui_arm64_glfw_opengl3", ..src_files, extra = .["-arch", "arm64",  "-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", macos_arm64_version_arg, tprint("-I%", IMGUI_PATH), tprint("/I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
+        success = build_cpp_static_lib("backends/macos/ImGui_arm64_glfw_opengl3", ..src_files, extra = .["-arch", "arm64",  "-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", macos_arm64_version_arg, tprint("-I%", IMGUI_PATH), tprint("-I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
         assert(success, "build_cpp_static_lib('backends/macos/ImGui_arm64_glfw_opengl3'");
 
         // create universal binaries
@@ -369,7 +369,7 @@ compile_and_generate_bindings_backend_glfw_opengl3 :: (compile_debug: bool) -> b
 
         // @Hack: Is -fno-threadsafe-statics really the way to go? Without it, we get linker errors when using the static library
         // due to "__cxa_guard_acquire" et al not being defined. The library users probably need to link agains libc++ or something. But do we really want to enforce that?
-        success = build_cpp_static_lib("backends/linux/ImGui_glfw_opengl3", ..src_files, extra = .["-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", tprint("-I%", IMGUI_PATH), tprint("/I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
+        success = build_cpp_static_lib("backends/linux/ImGui_glfw_opengl3", ..src_files, extra = .["-std=c++20", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", tprint("-I%", IMGUI_PATH), tprint("-I%", GLFW_INCLUDE_PATH)], debug=compile_debug);
         assert(success, "build_cpp_static_lib('backends/linux/ImGui_glfw_opengl3'");
     }
 
