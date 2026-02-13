@@ -19,7 +19,7 @@ ImplGlfw_NewFrame :: () -> void #foreign imgui_glfw_opengl3 "_Z23ImGui_ImplGlfw_
 ImplGlfw_InstallCallbacks :: (window: *GLFWwindow) -> void #foreign imgui_glfw_opengl3 "_Z31ImGui_ImplGlfw_InstallCallbacksP10GLFWwindow";
 ImplGlfw_RestoreCallbacks :: (window: *GLFWwindow) -> void #foreign imgui_glfw_opengl3 "_Z31ImGui_ImplGlfw_RestoreCallbacksP10GLFWwindow";
 
-// GFLW callbacks options:
+// GLFW callbacks options:
 // - Set 'chain_for_all_windows=true' to enable chaining callbacks for all windows (including secondary viewports created by backends or by user)
 ImplGlfw_SetCallbacksChainForAllWindows :: (chain_for_all_windows: bool) -> void #foreign imgui_glfw_opengl3 "_Z45ImGui_ImplGlfw_SetCallbacksChainForAllWindowsb";
 
@@ -48,7 +48,7 @@ ImplOpenGL3_RenderDrawData :: (draw_data: *ImDrawData) -> void #foreign imgui_gl
 ImplOpenGL3_CreateDeviceObjects :: () -> bool #foreign imgui_glfw_opengl3 "_Z37ImGui_ImplOpenGL3_CreateDeviceObjectsv";
 ImplOpenGL3_DestroyDeviceObjects :: () -> void #foreign imgui_glfw_opengl3 "_Z38ImGui_ImplOpenGL3_DestroyDeviceObjectsv";
 
-// (Advanced) Use e.g. if you need to precisely control the timing of texture updates (e.g. for staged rendering), by setting ImDrawData::Textures = NULL to handle this manually.
+// (Advanced) Use e.g. if you need to precisely control the timing of texture updates (e.g. for staged rendering), by setting ImDrawData::Textures = nullptr to handle this manually.
 ImplOpenGL3_UpdateTexture :: (tex: *ImTextureData) -> void #foreign imgui_glfw_opengl3 "_Z31ImGui_ImplOpenGL3_UpdateTextureP13ImTextureData";
 
 #scope_file
